@@ -4,16 +4,16 @@
 use bevy::prelude::*;
 use rand::Rng;
 use bevy::input::mouse::{MouseMotion, MouseButtonInput};
+use crate::cursor_move::{CursorMoveState, CursorMovePlugin};
 
 pub struct MinesweeperPlugin;
 
 impl Plugin for MinesweeperPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
-            .init_resource::<State>()
+            .add_plugin(CursorMovePlugin)
             .add_resource(Minesweeper::new())
             .add_startup_system(setup.system())
-            .add_system(cursor_move_system.system())
             .add_system(sweeper.system());
     }
 }
@@ -66,17 +66,10 @@ fn setup(
     }
 }
 
-#[derive(Default)]
-struct State {
-    cursor_moved_event_reader: EventReader<CursorMoved>,
-    pos: Vec2,
-}
-
 fn sweeper(
-    mut state: ResMut<State>,
+    mut state: ResMut<CursorMoveState>,
     mut mines: ResMut<Minesweeper>,
     mouse_button_input: Res<Input<MouseButton>>,
-    cursor_moved_events: Res<Events<CursorMoved>>,
     mut t: Query<(&mut Text, &Box)>,
 ) {
     if mouse_button_input.just_released(MouseButton::Left) {
@@ -144,15 +137,6 @@ fn sweeper(
                 }
             }
         }
-    }
-}
-
-fn cursor_move_system(
-    mut state: ResMut<State>,
-    cursor_moved_events: Res<Events<CursorMoved>>,
-) {
-    for event in state.cursor_moved_event_reader.iter(&cursor_moved_events) {
-        state.pos = event.position;
     }
 }
 

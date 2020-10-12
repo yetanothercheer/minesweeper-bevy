@@ -1,4 +1,5 @@
 mod minesweeper;
+mod cursor_move;
 
 use bevy::prelude::*;
 use bevy::render::pass::ClearColor;
