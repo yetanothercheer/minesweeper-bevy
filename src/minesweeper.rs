@@ -11,10 +11,62 @@ pub struct MinesweeperPlugin;
 impl Plugin for MinesweeperPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
+
+            .init_resource::<ButtonMaterials>()
+            .add_system(button_system.system())
+
             .add_plugin(CursorMovePlugin)
             .add_resource(Minesweeper::new())
             .add_startup_system(setup.system())
             .add_system(sweeper.system());
+    }
+}
+
+struct ButtonMaterials {
+    normal: Handle<ColorMaterial>,
+    hovered: Handle<ColorMaterial>,
+    pressed: Handle<ColorMaterial>,
+}
+
+impl FromResources for ButtonMaterials {
+    fn from_resources(resources: &Resources) -> Self {
+        let mut materials = resources.get_mut::<Assets<ColorMaterial>>().unwrap();
+        ButtonMaterials {
+            normal: materials.add(Color::rgb(0.15, 0.15, 0.15).into()),
+            hovered: materials.add(Color::rgb(0.25, 0.25, 0.25).into()),
+            pressed: materials.add(Color::rgb(0.35, 0.75, 0.35).into()),
+        }
+    }
+}
+
+fn button_system(
+    button_materials: Res<ButtonMaterials>,
+    mut mines: ResMut<Minesweeper>,
+    mut interaction_query: Query<
+        (&Interaction, &mut Handle<ColorMaterial>, &Children),
+        (Mutated<Interaction>, With<Button>),
+    >,
+    mut text_query: Query<&mut Text, With<RestartButton>>,
+    mut t: Query<(&mut Text, &Box)>,
+) {
+    for (interaction, mut material, children) in interaction_query.iter_mut() {
+        let mut text = text_query.get_mut(children[0]).unwrap();
+        match *interaction {
+            Interaction::Clicked => {
+                if mines.game_over {
+                    for (mut text, b) in t.iter_mut() { text.value = " ".into(); }
+                    mines.generate_state = false;
+                    mines.game_over = false;
+                }
+                *material = button_materials.pressed.clone();
+            }
+            Interaction::Hovered => {
+                *material = button_materials.hovered.clone();
+            }
+            Interaction::None => {
+                *material = button_materials.normal.clone();
+            }
+        }
     }
 }
 
@@ -23,11 +75,50 @@ struct Box {
     y: i32,
 }
 
+struct RestartButton;
+
 fn setup(
     commands: &mut Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
+    button_materials: Res<ButtonMaterials>,
 ) {
+    commands
+        // ui camera
+        .spawn(CameraUiBundle::default())
+        .spawn(ButtonBundle {
+            style: Style {
+                size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                position: Rect {
+                    ..Default::default()
+                },
+                // center button
+                // margin: Rect::all(Val::Auto),
+
+                // horizontally center child text
+                justify_content: JustifyContent::Center,
+                // vertically center child text
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            material: button_materials.normal.clone(),
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            parent.spawn(TextBundle {
+                text: Text {
+                    value: "RESTART".to_string(),
+                    font: asset_server.load("fonts/IBMPlexMono-Light.ttf"),
+                    style: TextStyle {
+                        font_size: 40.0,
+                        color: Color::rgb(0.9, 0.9, 0.9),
+                        ..Default::default()
+                    },
+                },
+                ..Default::default()
+            }).with(RestartButton);
+        });
+
     for x in -5..5 {
         for y in -5..5 {
             commands.spawn(SpriteBundle {
@@ -78,11 +169,8 @@ fn sweeper(
         // println!("{}", state.pos);
         // println!("{} {}", x, y);
 
-        // Restart Game
         if x < 0 || y < 0 || x > 9 || y > 9 {
-            for (mut text, b) in t.iter_mut() { text.value = " ".into(); }
-            mines.generate_state = false;
-            mines.game_over = false;
+            return;
         }
 
         if mines.game_over {
@@ -118,6 +206,7 @@ fn sweeper(
                         } else {
                             let n = mines.neighbor(x, y);
                             text.value = n.to_string().into();
+                            text.style.color = Color::BLUE;
                             if mines.check_win() {
                                 println!("You Win!");
                                 mines.game_over = true;

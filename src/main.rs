@@ -10,7 +10,7 @@ fn main() {
         .add_resource(WindowDescriptor {
             width: 960.0,
             height: 540.0,
-            title: "Bevy Demo".to_string(),
+            title: "minesweeper-bevy".to_string(),
             ..Default::default()
         })
         .add_resource(Msaa { samples: 1 })
