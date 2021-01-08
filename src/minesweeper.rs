@@ -24,14 +24,13 @@ struct Box {
 }
 
 fn setup(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    mut asset_server: Res<AssetServer>,
+    asset_server: Res<AssetServer>,
 ) {
-    let font_handle = asset_server.load("assets/fonts/IBMPlexMono-Light.ttf").unwrap();
     for x in -5..5 {
         for y in -5..5 {
-            commands.spawn(SpriteComponents {
+            commands.spawn(SpriteBundle {
                 material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
                 transform: Transform::from_translation(Vec3::new(x as f32 * 20.0, y as f32 * 20.0, 0.0)),
                 sprite: Sprite {
@@ -40,7 +39,7 @@ fn setup(
                 },
                 ..Default::default()
             }).with(Box { x, y });
-            commands.spawn(TextComponents {
+            commands.spawn(TextBundle {
                 style: Style {
                     size: Size::new(Val::Px(20.0), Val::Px(20.0)),
                     position_type: PositionType::Absolute,
@@ -54,10 +53,11 @@ fn setup(
                 },
                 text: Text {
                     value: " ".to_string(),
-                    font: font_handle,
+                    font: asset_server.load("fonts/IBMPlexMono-Light.ttf"),
                     style: TextStyle {
                         font_size: 30.0,
                         color: Color::BLUE,
+                        ..Default::default()
                     },
                 },
                 ..Default::default()
@@ -73,14 +73,14 @@ fn sweeper(
     mut t: Query<(&mut Text, &Box)>,
 ) {
     if mouse_button_input.just_released(MouseButton::Left) {
-        let x = ((state.pos.x() - 370.0) / 20.0).floor() as i32;
-        let y = ((state.pos.y() - 160.0) / 20.0).floor() as i32;
+        let x = ((state.pos.x - 370.0) / 20.0).floor() as i32;
+        let y = ((state.pos.y - 160.0) / 20.0).floor() as i32;
         // println!("{}", state.pos);
         // println!("{} {}", x, y);
 
         // Restart Game
         if x < 0 || y < 0 || x > 9 || y > 9 {
-            for (mut text, b) in &mut t.iter() { text.value = " ".into(); }
+            for (mut text, b) in t.iter_mut() { text.value = " ".into(); }
             mines.generate_state = false;
             mines.game_over = false;
         }
@@ -108,7 +108,7 @@ fn sweeper(
 
             if !mines.revealed(x, y) {
                 mines.mark_as_revealed(x, y);
-                for (mut text, b) in &mut t.iter() {
+                for (mut text, b) in t.iter_mut() {
                     if b.x == x - 5 && b.y == y - 5 {
                         if mines.test(x, y) {
                             text.value = "X".into();
@@ -186,7 +186,7 @@ impl Minesweeper {
         let exclude = (exclude_x * 10 + exclude_y) as usize;
         (0..num_mines).for_each(|_| {
             loop {
-                let index = rand::thread_rng().gen_range(0, 100) as usize;
+                let index = rand::thread_rng().gen_range(0..100) as usize;
                 if index != exclude && !self.mines[index] {
                     self.mines[index] = true;
                     break;

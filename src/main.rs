@@ -8,21 +8,19 @@ use crate::minesweeper::MinesweeperPlugin;
 fn main() {
     App::build()
         .add_resource(WindowDescriptor {
-            width: 960,
-            height: 540,
-            title: String::from("Bevy Demo"),
-            vsync: true,
-            resizable: true,
+            width: 960.0,
+            height: 540.0,
+            title: "Bevy Demo".to_string(),
             ..Default::default()
         })
         .add_resource(Msaa { samples: 1 })
         .add_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
-        .add_default_plugins()
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup.system())
         .add_plugin(MinesweeperPlugin)
         .run();
 }
 
-fn setup(mut commands: Commands) {
-    commands.spawn(UiCameraComponents::default()).spawn(Camera2dComponents::default());
+fn setup(commands: &mut Commands) {
+    commands.spawn(CameraUiBundle::default()).spawn(Camera2dBundle::default());
 }
