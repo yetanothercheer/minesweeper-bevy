@@ -1,14 +1,10 @@
 [package]
 name = "minesweeper-bevy"
 version = "0.1.0"
-authors = ["yetanothercheer"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.4.0"
-
-rand = "0.8.1"
-log = "0.4.0"
-env_logger = "0.8.2"
+bevy = { git="https://github.com/bevyengine/bevy", rev="1bae879bf3908c259ff1c83b1440e3ac62a562b9", features = ["dynamic"] }
+rand = "0.8.4"

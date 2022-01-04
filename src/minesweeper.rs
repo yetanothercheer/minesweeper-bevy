@@ -1,22 +1,31 @@
-use std::thread;
+use rand::Rng;
 
-use rand::{Rng};
-
-#[derive(Clone, Copy)]
-pub struct State {
-    pub surrounds: usize,
-    pub bomb: bool,
-    pub reveal: bool,
-    pub flag: bool,
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum CellStatus {
+    FLAG,
+    REVEAL,
+    HIDDEN,
 }
 
-impl Default for State {
+#[derive(Clone, Copy)]
+pub struct CellState {
+    pub surrounds: usize,
+    pub bomb: bool,
+    pub status: CellStatus,
+}
+
+impl CellState {
+    pub fn reveal(&self) -> bool {
+        self.status == CellStatus::REVEAL
+    }
+}
+
+impl Default for CellState {
     fn default() -> Self {
-        State {
+        CellState {
             surrounds: 0,
             bomb: false,
-            reveal: false,
-            flag: false,
+            status: CellStatus::HIDDEN,
         }
     }
 }
@@ -24,9 +33,16 @@ impl Default for State {
 pub struct Mines {
     width: usize,
     height: usize,
-    pub state: Vec<State>,
+    pub state: Vec<CellState>,
 }
 
+impl Default for Mines {
+    fn default() -> Self {
+        Mines::new(10, 10)
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Debug)]
 pub enum Status {
     GameOver,
     Unfinished,
@@ -83,10 +99,10 @@ impl Mines {
     pub fn status(&self) -> Status {
         let mut unfinished = false;
         for state in &self.state {
-            if state.bomb && state.reveal {
+            if state.bomb && state.status == CellStatus::REVEAL {
                 return Status::GameOver;
             }
-            if !state.bomb && !state.reveal {
+            if !state.bomb && state.status != CellStatus::REVEAL {
                 unfinished = true;
             }
         }
@@ -100,7 +116,7 @@ impl Mines {
     // Input Range
     // x: 1..=width
     // y: 1..=height
-    pub fn at(&mut self, x: usize, y: usize) -> Option<&mut State> {
+    pub fn at(&mut self, x: usize, y: usize) -> Option<&mut CellState> {
         if x == 0 || y == 0 || x > self.width || y > self.height {
             return None;
         }
@@ -108,16 +124,18 @@ impl Mines {
     }
 
     pub fn reveal(&mut self, x: usize, y: usize) {
-        match self.at(x, y) {
-            Some(state) => {
-                if !state.reveal {
-                    state.reveal = true;
-                    if !state.bomb && state.surrounds == 0 {
-                        surround_at(x, y).iter().for_each(|p| self.reveal(p.0, p.1));
+        if self.status() == Status::Unfinished {
+            match self.at(x, y) {
+                Some(state) => {
+                    if !state.reveal() {
+                        state.status = CellStatus::REVEAL;
+                        if !state.bomb && state.surrounds == 0 {
+                            surround_at(x, y).iter().for_each(|p| self.reveal(p.0, p.1));
+                        }
                     }
                 }
+                None => {}
             }
-            None => {}
         }
     }
 
@@ -130,7 +148,7 @@ impl Mines {
                     if state.bomb {
                         String::from("😀")
                     } else {
-                        state.surrounds.to_string() + if state.reveal { "." } else { "" }
+                        state.surrounds.to_string() + if state.reveal() { "." } else { "" }
                     }
                 )
             }
@@ -144,10 +162,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let mut mines = Mines::new(10, 10);
-        mines.generate(10, (1, 1));
+    fn winning_case() {
+        let mut mines = Mines {
+            width: 2,
+            height: 2,
+            state: vec![CellState {
+                bomb: false,
+                status: CellStatus::HIDDEN,
+                surrounds: 0,
+            }],
+        };
         mines.reveal(1, 1);
-        mines.pretty_print();
+        assert_eq!(mines.status(), Status::Win, "a simple winning case")
     }
 }
